@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getItems, addContacts } from 'redux/contactsSlice';
-import { useDispatch, useSelector } from 'react-redux';
+import { useCreateContactMutation, useGetContactsQuery } from 'redux/contactsApi';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
 import shortid from 'shortid';
 import s from './ContactForm.module.css';
@@ -9,9 +8,9 @@ import s from './ContactForm.module.css';
   const [name, setName] = useState('');
   const [number, setNumber] = useState('');
   const [isDisabled, setIsDisabled] = useState(false);
-  const contacts = useSelector(getItems);
-  const dispatch = useDispatch();
-  
+  const [createContact] = useCreateContactMutation();
+  const { data } = useGetContactsQuery();
+
   const reset = () => {
     setName('');
     setNumber('');
@@ -24,24 +23,26 @@ import s from './ContactForm.module.css';
       name,
       number,
     };
-    dispatch(addContacts(contact));
-    reset();
-  };
-
-  useEffect(() => {
-    setIsDisabled(false);
-    const contactFinder = contacts.find(
-      contact =>
-        contact.name.toLowerCase() === name.toLowerCase() ||
-        contact.number === number
+    const contactFinder = data.find(
+      contact => contact.name === name || contact.number === number
     );
 
     if (contactFinder) {
-      setIsDisabled(true);
       Notify.warning(`${name} ${number} is already in contacts.`);
-      reset();
+      return;
     }
-  }, [name, number, contacts]);
+
+    createContact(contact);
+
+    reset();
+  };
+
+
+  useEffect(() => {
+    name.length > 0 && number.length > 0
+      ? setIsDisabled(false)
+      : setIsDisabled(true);
+  }, [name, number]);
 
   return (
     <form onSubmit={handleSubmit} className={s.container}>
